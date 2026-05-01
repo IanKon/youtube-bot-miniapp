@@ -36,6 +36,7 @@
     .btn-disabled { background: #2a2a3e; color: #555; cursor: not-allowed; }
     .skip-blocked { font-size: 12px; color: #555; margin-top: 12px; }
     .promo { margin-top: 16px; font-size: 14px; color: #aaa; }
+    .status { font-size: 13px; color: #6c63ff; margin-top: 10px; display: none; }
   </style>
 </head>
 <body>
@@ -60,6 +61,7 @@
       🎬 Получить видео
     </button>
     <div class="skip-blocked" id="skipMsg">Кнопка разблокируется после просмотра</div>
+    <div class="status" id="statusMsg">⏳ Отправляю запрос...</div>
     <div class="promo">🎁 Промокод: <b style="color: #6c63ff;">MORGENSHTERN</b></div>
   </div>
 
@@ -77,10 +79,12 @@
     const skipMsg = document.getElementById('skipMsg');
     const timerText = document.getElementById('timerText');
     const tapOverlay = document.getElementById('tapOverlay');
+    const statusMsg = document.getElementById('statusMsg');
 
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token') || '';
-    const bot = params.get('bot') || 'YouTubeVideoos_bot';
+    const uid = params.get('uid') || '';
+    const webhook = params.get('webhook') || '';
 
     function handleTap() {
       if (started) return;
@@ -114,9 +118,32 @@
       skipMsg.textContent = '';
     }
 
-    function finish() {
+    async function finish() {
       if (!finished) return;
-      tg.openTelegramLink(`https://t.me/${bot}?start=adtoken_${token}`);
+      btn.disabled = true;
+      btn.textContent = '⏳ Загружаю...';
+      statusMsg.style.display = 'block';
+
+      try {
+        const resp = await fetch(webhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token, user_id: uid })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          statusMsg.textContent = '✅ Готово! Видео начинает загружаться в боте.';
+          timerText.textContent = 'Можешь закрыть это окно.';
+          btn.textContent = '✅ Отправлено!';
+          setTimeout(() => tg.close(), 1500);
+        } else {
+          throw new Error(data.error || 'error');
+        }
+      } catch(e) {
+        statusMsg.textContent = '❌ Ошибка. Попробуй ещё раз.';
+        btn.disabled = false;
+        btn.textContent = '🎬 Получить видео';
+      }
     }
 
     document.addEventListener('visibilitychange', () => {
