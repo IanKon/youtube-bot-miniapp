@@ -42,9 +42,9 @@
   <div class="container">
     <div class="ad-label">Реклама</div>
     <div class="title">Смотри рекламу</div>
-    <div class="subtitle" id="adSubtitle">Досмотри до конца чтобы получить видео</div>
+    <div class="subtitle">Досмотри до конца чтобы получить видео</div>
 
-    <div class="video-wrapper" id="videoWrapper" onclick="handleTap()">
+    <div class="video-wrapper" onclick="handleTap()">
       <div class="tap-overlay" id="tapOverlay">
         <div class="tap-text">▶️ Нажми чтобы начать</div>
       </div>
@@ -69,11 +69,7 @@
     tg.expand();
 
     const TIMER_SEC = 15;
-    let elapsed = 0;
-    let timer = null;
-    let finished = false;
-    let paused = false;
-    let started = false;
+    let elapsed = 0, timer = null, finished = false, paused = false, started = false;
 
     const video = document.getElementById('adVideo');
     const fill = document.getElementById('timerFill');
@@ -84,7 +80,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token') || '';
-    const bot = params.get('bot') || 'iansbotchat_bot';
+    const bot = params.get('bot') || 'YouTubeVideoos_bot';
 
     function handleTap() {
       if (started) return;
@@ -100,8 +96,7 @@
       timer = setInterval(() => {
         if (paused) return;
         elapsed++;
-        const pct = Math.min((elapsed / TIMER_SEC) * 100, 100);
-        fill.style.width = pct + '%';
+        fill.style.width = Math.min(elapsed / TIMER_SEC * 100, 100) + '%';
         const left = Math.max(TIMER_SEC - elapsed, 0);
         timerText.innerHTML = `Подожди <b>${left}</b> сек...`;
         if (elapsed >= TIMER_SEC && !finished) {
@@ -121,12 +116,9 @@
 
     function finish() {
       if (!finished) return;
-      const url = `https://t.me/${bot}?start=adtoken_${token}`;
-      // Закрываем и открываем бота
       tg.close();
-      // Небольшая задержка чтобы Mini App закрылся
       setTimeout(() => {
-        tg.openTelegramLink(url);
+        tg.openTelegramLink(`https://t.me/${bot}?start=adtoken_${token}`);
       }, 100);
     }
 
@@ -139,15 +131,11 @@
       } else {
         paused = false;
         video.play();
-        if (!finished) {
-          timerText.innerHTML = `Подожди <b>${Math.max(TIMER_SEC - elapsed, 0)}</b> сек...`;
-        }
+        if (!finished) timerText.innerHTML = `Подожди <b>${Math.max(TIMER_SEC - elapsed, 0)}</b> сек...`;
       }
     });
 
-    video.addEventListener('pause', () => {
-      if (started && !document.hidden) video.play();
-    });
+    video.addEventListener('pause', () => { if (started && !document.hidden) video.play(); });
   </script>
 </body>
 </html>
