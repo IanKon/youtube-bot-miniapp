@@ -9,14 +9,9 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #1a1a2e;
-      color: white;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      background: #1a1a2e; color: white; height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px;
     }
     .container { width: 100%; max-width: 400px; text-align: center; }
     .ad-label { font-size: 11px; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
@@ -38,7 +33,6 @@
     .timer-text { font-size: 14px; color: #888; margin-bottom: 20px; }
     .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
     .btn-active { background: linear-gradient(135deg, #6c63ff, #48cae4); color: white; }
-    .btn-active:hover { opacity: 0.9; }
     .btn-disabled { background: #2a2a3e; color: #555; cursor: not-allowed; }
     .skip-blocked { font-size: 12px; color: #555; margin-top: 12px; }
     .promo { margin-top: 16px; font-size: 14px; color: #aaa; }
@@ -90,11 +84,12 @@
 
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token') || '';
+    const bot = params.get('bot') || '';
     const partInfo = params.get('part') || '';
 
     if (partInfo) {
       document.getElementById('adSubtitle').textContent =
-        `Досмотри рекламу чтобы получить ${partInfo}`;
+        `Досмотри рекламу чтобы получить ${decodeURIComponent(partInfo)}`;
     }
 
     function handleTap() {
@@ -132,8 +127,11 @@
 
     function finish() {
       if (!finished) return;
-      // Отправляем токен напрямую боту через sendData
-      tg.sendData(JSON.stringify({ token: token }));
+      // Закрываем Mini App и открываем бота с токеном
+      tg.close();
+      setTimeout(() => {
+        tg.openTelegramLink(`https://t.me/${bot}?start=adtoken_${token}`);
+      }, 300);
     }
 
     document.addEventListener('visibilitychange', () => {
