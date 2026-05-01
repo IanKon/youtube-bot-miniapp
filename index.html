@@ -116,10 +116,7 @@
 
     function finish() {
       if (!finished) return;
-      tg.close();
-      setTimeout(() => {
-        tg.openTelegramLink(`https://t.me/${bot}?start=adtoken_${token}`);
-      }, 100);
+      tg.openTelegramLink(`https://t.me/${bot}?start=adtoken_${token}`);
     }
 
     document.addEventListener('visibilitychange', () => {
