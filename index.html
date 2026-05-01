@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Реклама</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #1a1a2e;
+      color: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #e0e0e0;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 20px;
+    }
+    video {
+      width: 100%;
+      display: block;
+      max-height: 220px;
+      object-fit: cover;
+    }
+    .timer-bar {
+      width: 100%;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .timer-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6c63ff, #48cae4);
+      border-radius: 2px;
+      transition: width 1s linear;
+      width: 0%;
+    }
+    .timer-text {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-active {
+      background: linear-gradient(135deg, #6c63ff, #48cae4);
+      color: white;
+    }
+    .btn-active:hover { opacity: 0.9; transform: scale(0.98); }
+    .btn-disabled {
+      background: #2a2a3e;
+      color: #555;
+      cursor: not-allowed;
+    }
+    .skip-blocked {
+      font-size: 12px;
+      color: #555;
+      margin-top: 12px;
+    }
+    .ad-label {
+      font-size: 11px;
+      color: #555;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="ad-label">Реклама</div>
+    <div class="title" id="adTitle">Смотри рекламу</div>
+    <div class="subtitle" id="adSubtitle">Досмотри до конца чтобы получить продолжение</div>
+
+    <div class="video-wrapper">
+      <video id="adVideo" playsinline autoplay muted>
+        <source src="ad.mp4" type="video/mp4">
+      </video>
+    </div>
+
+    <div class="timer-bar">
+      <div class="timer-fill" id="timerFill"></div>
+    </div>
+    <div class="timer-text" id="timerText">Подожди <span id="countdown">15</span> сек...</div>
+
+    <button class="btn btn-disabled" id="getBtn" disabled onclick="finish()">
+      🎬 Получить продолжение
+    </button>
+    <div class="skip-blocked" id="skipMsg">Кнопка разблокируется после просмотра</div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    const TIMER_SEC = 15;
+    let elapsed = 0;
+    let timer = null;
+    let finished = false;
+    let paused = false;
+
+    const video = document.getElementById('adVideo');
+    const fill = document.getElementById('timerFill');
+    const countdown = document.getElementById('countdown');
+    const btn = document.getElementById('getBtn');
+    const skipMsg = document.getElementById('skipMsg');
+    const timerText = document.getElementById('timerText');
+
+    // Получаем параметры из URL
+    const params = new URLSearchParams(window.location.search);
+    const partInfo = params.get('part') || '';
+    const userId = params.get('uid') || '';
+    const token = params.get('token') || '';
+
+    if (partInfo) {
+      document.getElementById('adSubtitle').textContent =
+        `Досмотри рекламу чтобы получить ${partInfo}`;
+    }
+
+    function startTimer() {
+      if (timer) return;
+      timer = setInterval(() => {
+        if (paused) return;
+        elapsed++;
+        const pct = Math.min((elapsed / TIMER_SEC) * 100, 100);
+        fill.style.width = pct + '%';
+        const left = Math.max(TIMER_SEC - elapsed, 0);
+        countdown.textContent = left;
+
+        if (elapsed >= TIMER_SEC && !finished) {
+          finished = true;
+          clearInterval(timer);
+          unlock();
+        }
+      }, 1000);
+    }
+
+    function unlock() {
+      btn.disabled = false;
+      btn.className = 'btn btn-active';
+      timerText.textContent = '✅ Готово! Нажми кнопку ниже';
+      skipMsg.textContent = '';
+    }
+
+    function finish() {
+      if (!finished) return;
+      // Отправляем данные боту
+      tg.sendData(JSON.stringify({
+        action: 'ad_watched',
+        user_id: userId,
+        token: token
+      }));
+      tg.close();
+    }
+
+    // Останавливаем таймер если пользователь свернул приложение
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        paused = true;
+        video.pause();
+        timerText.textContent = '⏸ Вернись чтобы продолжить...';
+      } else {
+        paused = false;
+        video.play();
+        if (!finished) {
+          timerText.innerHTML = 'Подожди <span id="countdown">' +
+            Math.max(TIMER_SEC - elapsed, 0) + '</span> сек...';
+        }
+      }
+    });
+
+    // Запускаем видео и таймер
+    video.addEventListener('play', () => startTimer());
+    video.play().catch(() => {
+      // Автовоспроизведение заблокировано — запускаем по клику
+      video.muted = false;
+      startTimer();
+    });
+  </script>
+</body>
+</html>
