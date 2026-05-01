@@ -23,30 +23,14 @@
     .title { font-size: 18px; font-weight: bold; margin-bottom: 8px; color: #e0e0e0; }
     .subtitle { font-size: 14px; color: #888; margin-bottom: 20px; }
     .video-wrapper {
-      position: relative;
-      width: 100%;
-      border-radius: 16px;
-      overflow: hidden;
-      background: #000;
-      margin-bottom: 20px;
-      cursor: pointer;
+      position: relative; width: 100%; border-radius: 16px;
+      overflow: hidden; background: #000; margin-bottom: 20px; cursor: pointer;
     }
-    video {
-      width: 100%;
-      display: block;
-      max-height: 220px;
-      object-fit: cover;
-      pointer-events: none;
-    }
+    video { width: 100%; display: block; max-height: 220px; object-fit: cover; pointer-events: none; }
     .tap-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.5);
-      z-index: 10;
-      border-radius: 16px;
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.5); z-index: 10; border-radius: 16px;
     }
     .tap-text { font-size: 16px; color: white; font-weight: bold; }
     .timer-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
@@ -75,9 +59,7 @@
       </video>
     </div>
 
-    <div class="timer-bar">
-      <div class="timer-fill" id="timerFill"></div>
-    </div>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
     <div class="timer-text" id="timerText">Нажми на видео чтобы начать</div>
 
     <button class="btn btn-disabled" id="getBtn" disabled onclick="finish()">
@@ -106,10 +88,8 @@
     const timerText = document.getElementById('timerText');
     const tapOverlay = document.getElementById('tapOverlay');
 
-    // Получаем параметры из URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token') || '';
-    const botUsername = params.get('bot') || '';
     const partInfo = params.get('part') || '';
 
     if (partInfo) {
@@ -152,14 +132,10 @@
 
     function finish() {
       if (!finished) return;
-      // Открываем бота с токеном — бот получит /start token_xxx
-      // и поймёт что именно этот пользователь посмотрел рекламу
-      const url = `https://t.me/${botUsername}?start=adtoken_${token}`;
-      tg.openTelegramLink(url);
-      tg.close();
+      // Отправляем токен напрямую боту через sendData
+      tg.sendData(JSON.stringify({ token: token }));
     }
 
-    // Стоп если свернули
     document.addEventListener('visibilitychange', () => {
       if (!started) return;
       if (document.hidden) {
@@ -175,7 +151,6 @@
       }
     });
 
-    // Не даём поставить паузу
     video.addEventListener('pause', () => {
       if (started && !document.hidden) video.play();
     });
