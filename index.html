@@ -48,11 +48,7 @@
       z-index: 10;
       border-radius: 16px;
     }
-    .tap-text {
-      font-size: 16px;
-      color: white;
-      font-weight: bold;
-    }
+    .tap-text { font-size: 16px; color: white; font-weight: bold; }
     .timer-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
     .timer-fill { height: 100%; background: linear-gradient(90deg, #6c63ff, #48cae4); border-radius: 2px; transition: width 1s linear; width: 0%; }
     .timer-text { font-size: 14px; color: #888; margin-bottom: 20px; }
@@ -61,6 +57,7 @@
     .btn-active:hover { opacity: 0.9; }
     .btn-disabled { background: #2a2a3e; color: #555; cursor: not-allowed; }
     .skip-blocked { font-size: 12px; color: #555; margin-top: 12px; }
+    .promo { margin-top: 16px; font-size: 14px; color: #aaa; }
   </style>
 </head>
 <body>
@@ -87,7 +84,7 @@
       🎬 Получить продолжение
     </button>
     <div class="skip-blocked" id="skipMsg">Кнопка разблокируется после просмотра</div>
-    <div style="margin-top: 16px; font-size: 14px; color: #aaa;">🎁 Промокод: <b style="color: #6c63ff;">MORGENSHTERN</b></div>
+    <div class="promo">🎁 Промокод: <b style="color: #6c63ff;">MORGENSHTERN</b></div>
   </div>
 
   <script>
@@ -109,10 +106,11 @@
     const timerText = document.getElementById('timerText');
     const tapOverlay = document.getElementById('tapOverlay');
 
+    // Получаем параметры из URL
     const params = new URLSearchParams(window.location.search);
-    const partInfo = params.get('part') || '';
-    const userId = params.get('uid') || '';
     const token = params.get('token') || '';
+    const botUsername = params.get('bot') || '';
+    const partInfo = params.get('part') || '';
 
     if (partInfo) {
       document.getElementById('adSubtitle').textContent =
@@ -154,11 +152,10 @@
 
     function finish() {
       if (!finished) return;
-      tg.sendData(JSON.stringify({
-        action: 'ad_watched',
-        user_id: userId,
-        token: token
-      }));
+      // Открываем бота с токеном — бот получит /start token_xxx
+      // и поймёт что именно этот пользователь посмотрел рекламу
+      const url = `https://t.me/${botUsername}?start=adtoken_${token}`;
+      tg.openTelegramLink(url);
       tg.close();
     }
 
