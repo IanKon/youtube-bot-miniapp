@@ -203,6 +203,8 @@
 
     async function openChannel(idx) {
       const ch = allChannels[idx]; currentChannel = ch; mode = 'channel';
+      // Build channel_url from channel_id if url is missing
+      if (!ch.url && ch.channel_id) ch.url = 'https://youtube.com/channel/' + ch.channel_id;
       app.innerHTML = `<div class="state"><div class="spinner"></div><div class="state-title">Загружаю ${esc(ch.name)}...</div></div>`;
       try {
         const r = await fetch(webhookBase + '/channel_videos', {
@@ -216,14 +218,18 @@
     }
 
     function renderChannel(ch) {
-      // Check if already subscribed via notification
-      const isSubbed = false; // будет обновляться
+      // Ensure url is set
+      if (!ch.url && ch.channel_id) ch.url = 'https://youtube.com/channel/' + ch.channel_id;
       let html = `<div class="channel-header">
         <button class="back-btn" onclick="backToSearch()">←</button>
         <div class="channel-header-name">${esc(ch.name)}</div>
         <button class="sub-btn" id="subBtn" onclick="subscribeChannel('${esc(ch.channel_id)}','${esc(ch.name)}','${esc(ch.url)}')">🔔 Подписаться</button>
       </div><div class="results">`;
-      channelVideos.forEach((v,i) => { html += videoCard(v,i); });
+      if (!channelVideos.length) {
+        html += `<div class="state"><div class="state-icon">📭</div><div class="state-title">Нет видео</div><div class="state-sub">Не удалось загрузить видео канала</div></div>`;
+      } else {
+        channelVideos.forEach((v,i) => { html += videoCard(v,i); });
+      }
       html += '</div>';
       app.innerHTML = html;
     }
