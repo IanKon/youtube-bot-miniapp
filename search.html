@@ -202,42 +202,62 @@
     }
 
     async function openChannel(idx) {
-      const ch = allChannels[idx]; currentChannel = ch; mode = 'channel';
-      // Ensure url is always valid — build from channel_id if missing
-      if (!ch.url || !ch.url.startsWith('https://')) {
-        ch.url = 'https://youtube.com/channel/' + ch.channel_id;
-      }
+      const ch = allChannels[idx];
+      currentChannel = ch;
+      mode = 'channel';
+
+      // Always build a valid url from channel_id
+      const chUrl = ch.url && ch.url.startsWith('https://youtube.com/')
+        ? ch.url
+        : 'https://youtube.com/channel/' + ch.channel_id;
+      ch.url = chUrl;
+
       app.innerHTML = `<div class="state"><div class="spinner"></div><div class="state-title">Загружаю ${esc(ch.name)}...</div></div>`;
+
+      let isSubbed = false;
       try {
         const r = await fetch(webhookBase + '/channel_videos', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({channel_url: ch.url, channel_id: ch.channel_id, uid})
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({channel_url: chUrl, channel_id: ch.channel_id, uid})
         });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'server error');
         channelVideos = d.videos || [];
-        const subscribedIds = d.subscribed_ids || [];
-        const isSubbed = subscribedIds.includes(ch.channel_id);
-        renderChannel(ch, isSubbed);
-      } catch(e) { showError('Не удалось загрузить канал'); }
+        const subIds = d.subscribed_ids || [];
+        isSubbed = subIds.includes(ch.channel_id);
+      } catch(e) {
+        console.error('channel_videos error:', e);
+        // Still render — just with empty list and error message
+        channelVideos = [];
+      }
+      renderChannel(ch, isSubbed);
     }
 
     function renderChannel(ch, isSubbed) {
-      // Ensure url
-      if (!ch.url || !ch.url.startsWith('https://')) {
-        ch.url = 'https://youtube.com/channel/' + ch.channel_id;
-      }
-      const subBtnHtml = isSubbed
+      const chUrl = ch.url && ch.url.startsWith('https://youtube.com/')
+        ? ch.url
+        : 'https://youtube.com/channel/' + ch.channel_id;
+
+      const subBtn = isSubbed
         ? `<button class="sub-btn subbed" disabled>✅ Подписан</button>`
-        : `<button class="sub-btn" id="subBtn" onclick="subscribeChannel('${esc(ch.channel_id)}','${esc(ch.name)}','${esc(ch.url)}')">🔔 Подписаться</button>`;
+        : `<button class="sub-btn" id="subBtn" onclick="subscribeChannel('${esc(ch.channel_id)}','${esc(ch.name)}','${esc(chUrl)}')">🔔 Подписаться</button>`;
+
       let html = `<div class="channel-header">
         <button class="back-btn" onclick="backToSearch()">←</button>
         <div class="channel-header-name">${esc(ch.name)}</div>
-        ${subBtnHtml}
+        ${subBtn}
       </div><div class="results">`;
-      if (!channelVideos.length) {
-        html += `<div class="state"><div class="state-icon">📭</div><div class="state-title">Видео не найдены</div><div class="state-sub">Попробуй зайти позже</div></div>`;
+
+      if (channelVideos.length === 0) {
+        html += `<div class="state">
+          <div class="state-icon">📭</div>
+          <div class="state-title">Видео не загрузились</div>
+          <div class="state-sub">Попробуй нажать назад и зайти снова</div>
+        </div>`;
       } else {
-        channelVideos.forEach((v,i) => { html += videoCard(v,i); });
+        channelVideos.forEach((v, i) => { html += videoCard(v, i); });
       }
       html += '</div>';
       app.innerHTML = html;
@@ -245,10 +265,12 @@
 
     async function subscribeChannel(channelId, channelName, channelUrl) {
       const btn = document.getElementById('subBtn');
+      if (!btn) return;
       btn.disabled = true; btn.textContent = '⏳...';
       try {
         const r = await fetch(webhookBase + '/subscribe_channel', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({channel_id: channelId, channel_name: channelName,
                                 channel_url: channelUrl, uid})
         });
