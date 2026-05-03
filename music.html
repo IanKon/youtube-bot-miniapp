@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Музыка</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Circular+Std:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #1DB954;
+      --green-dark: #158a3e;
+      --bg: #121212;
+      --surface: #181818;
+      --surface2: #282828;
+      --surface3: #333;
+      --text: #FFFFFF;
+      --text2: #B3B3B3;
+      --text3: #535353;
+      --radius: 8px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+
+    /* Header */
+    .header { position:sticky; top:0; z-index:100; background:var(--bg); padding:12px 16px 8px; }
+    .search-wrap { display:flex; align-items:center; gap:10px; background:var(--surface2); border-radius:28px; padding:10px 16px; border:2px solid transparent; transition:border-color .2s; }
+    .search-wrap:focus-within { border-color:var(--green); }
+    .search-icon { color:var(--text2); flex-shrink:0; }
+    .search-input { flex:1; background:none; border:none; outline:none; color:var(--text); font-size:15px; font-family:inherit; }
+    .search-input::placeholder { color:var(--text3); }
+    .search-btn { background:var(--green); border:none; border-radius:20px; color:#000; font-size:13px; font-weight:700; padding:7px 16px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .2s; }
+    .search-btn:active { background:var(--green-dark); }
+
+    /* States */
+    .state { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:55vh; gap:14px; padding:24px; text-align:center; }
+    .state-icon { font-size:56px; }
+    .state-title { font-size:18px; font-weight:700; }
+    .state-sub { font-size:13px; color:var(--text2); }
+    .spinner { width:40px; height:40px; border:3px solid var(--surface3); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Tabs */
+    .tabs { display:flex; padding:8px 16px 0; border-bottom:1px solid var(--surface3); margin-bottom:4px; }
+    .tab { flex:1; text-align:center; padding:10px 0; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+    .tab.active { color:var(--green); border-bottom-color:var(--green); }
+
+    /* Section header */
+    .section-header { padding:16px 16px 8px; font-size:18px; font-weight:700; }
+    .section-sub { padding:0 16px 12px; font-size:13px; color:var(--text2); }
+
+    /* Track card — горизонтальный */
+    .track-card { display:flex; align-items:center; gap:12px; padding:8px 16px; cursor:pointer; transition:background .15s; border-radius:var(--radius); margin:0 8px; }
+    .track-card:active { background:var(--surface2); }
+    .track-thumb { width:52px; height:52px; border-radius:6px; object-fit:cover; background:var(--surface3); flex-shrink:0; }
+    .track-thumb-placeholder { width:52px; height:52px; border-radius:6px; background:linear-gradient(135deg,#1a1a1a,var(--surface3)); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:22px; }
+    .track-info { flex:1; min-width:0; }
+    .track-title { font-size:14px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+    .track-artist { font-size:12px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .track-dur { font-size:12px; color:var(--text3); flex-shrink:0; margin-left:8px; }
+    .track-card.playing .track-title { color:var(--green); }
+
+    /* Artist card */
+    .artist-card { display:flex; align-items:center; gap:12px; padding:10px 16px; cursor:pointer; transition:background .15s; }
+    .artist-card:active { background:var(--surface2); }
+    .artist-avatar { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--green-dark),var(--green)); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:#000; flex-shrink:0; }
+    .artist-name { font-size:15px; font-weight:600; }
+    .artist-sub { font-size:12px; color:var(--text2); margin-top:2px; }
+
+    /* Artist page */
+    .artist-header { background:linear-gradient(180deg,#1a3a1a 0%,var(--bg) 100%); padding:20px 16px 16px; }
+    .artist-header-back { display:flex; align-items:center; gap:8px; margin-bottom:12px; cursor:pointer; color:var(--text2); font-size:14px; background:none; border:none; font-family:inherit; }
+    .artist-header-back:active { color:var(--text); }
+    .artist-big-avatar { width:100px; height:100px; border-radius:50%; background:linear-gradient(135deg,var(--green-dark),var(--green)); display:flex; align-items:center; justify-content:center; font-size:42px; font-weight:700; color:#000; margin-bottom:12px; }
+    .artist-big-name { font-size:28px; font-weight:700; margin-bottom:4px; }
+    .artist-big-sub { font-size:13px; color:var(--text2); }
+
+    /* Load more */
+    .load-more { display:block; width:calc(100% - 32px); margin:12px 16px; padding:13px; background:var(--surface2); border:none; border-radius:var(--radius); color:var(--text2); font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; text-align:center; transition:background .2s; }
+    .load-more:active { background:var(--surface3); }
+
+    /* Download overlay */
+    .dl-overlay { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-radius:20px 20px 0 0; padding:20px 16px 32px; z-index:200; animation:slideUp .25s; box-shadow:0 -4px 24px rgba(0,0,0,.5); }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .dl-title { font-size:13px; color:var(--text2); text-align:center; margin-bottom:6px; }
+    .dl-track { font-size:16px; font-weight:700; text-align:center; margin-bottom:20px; line-height:1.4; }
+    .dl-btn { display:flex; align-items:center; gap:10px; width:100%; padding:14px 16px; background:var(--surface2); border:none; border-radius:10px; color:var(--text); font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; margin-bottom:10px; transition:background .15s; }
+    .dl-btn:active { background:var(--surface3); }
+    .dl-btn-icon { font-size:20px; width:28px; text-align:center; }
+    .dl-cancel { display:block; width:100%; padding:13px; background:none; border:none; color:var(--text3); font-size:15px; font-family:inherit; cursor:pointer; text-align:center; margin-top:4px; }
+    .overlay-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; }
+
+    .results { padding-bottom:80px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="search-wrap">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Артист, трек, альбом..." autocomplete="off">
+      <button class="search-btn" onclick="doSearch()">Найти</button>
+    </div>
+  </div>
+  <div id="app"></div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready(); tg.expand();
+
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('uid') || '';
+    const webhookBase = decodeURIComponent(params.get('webhook') || '');
+
+    const app = document.getElementById('app');
+    let allTracks = [], allArtists = [], shownTracks = 0, shownArtists = 0;
+    const PAGE = 10;
+    let mode = 'search', activeTab = 'tracks';
+    let currentArtist = null, artistTracks = [];
+    let pendingTrack = null;
+
+    showEmpty();
+    document.getElementById('searchInput').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+
+    function showEmpty() {
+      app.innerHTML = `<div class="state">
+        <div class="state-icon">🎵</div>
+        <div class="state-title">Найди музыку</div>
+        <div class="state-sub">Введи название трека или имя артиста</div>
+      </div>`;
+    }
+    function showLoading() {
+      app.innerHTML = `<div class="state"><div class="spinner"></div><div class="state-title" style="color:var(--text2)">Ищу...</div></div>`;
+    }
+    function showError(msg) {
+      app.innerHTML = `<div class="state"><div class="state-icon">😕</div><div class="state-title">${msg}</div></div>`;
+    }
+
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function letter(n) { return (n||'?')[0].toUpperCase(); }
+    function fmtDur(sec) {
+      if (!sec) return '';
+      if (typeof sec === 'string') return sec;
+      const m = Math.floor(sec/60), s = sec%60;
+      return `${m}:${s.toString().padStart(2,'0')}`;
+    }
+
+    async function doSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      if (!q) return;
+      mode = 'search'; showLoading();
+      try {
+        const r = await fetch(webhookBase + '/music_search', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({query: q, uid})
+        });
+        const d = await r.json();
+        if (!d.ok) { showError('Ошибка поиска'); return; }
+        allTracks = d.tracks || [];
+        allArtists = d.artists || [];
+        shownTracks = 0; shownArtists = 0;
+        activeTab = allTracks.length ? 'tracks' : 'artists';
+        renderResults();
+      } catch(e) { showError('Нет соединения с ботом'); }
+    }
+
+    function renderResults() {
+      if (!allTracks.length && !allArtists.length) { showError('Ничего не найдено'); return; }
+      let html = `<div class="tabs">
+        <div class="tab ${activeTab==='tracks'?'active':''}" onclick="switchTab('tracks')">Треки ${allTracks.length ? '('+allTracks.length+')' : ''}</div>
+        <div class="tab ${activeTab==='artists'?'active':''}" onclick="switchTab('artists')">Артисты ${allArtists.length ? '('+allArtists.length+')' : ''}</div>
+      </div><div class="results" id="rc">`;
+
+      if (activeTab === 'tracks') {
+        const slice = allTracks.slice(0, PAGE);
+        shownTracks = slice.length;
+        slice.forEach((t,i) => { html += trackCard(t, i); });
+        if (shownTracks < allTracks.length) html += `<button class="load-more" onclick="loadMoreTracks()">⬇️ Ещё треки (${allTracks.length - shownTracks})</button>`;
+      } else {
+        const slice = allArtists.slice(0, PAGE);
+        shownArtists = slice.length;
+        slice.forEach((a,i) => { html += artistCard(a, i); });
+        if (shownArtists < allArtists.length) html += `<button class="load-more" onclick="loadMoreArtists()">⬇️ Ещё артисты</button>`;
+      }
+      html += '</div>';
+      app.innerHTML = html;
+    }
+
+    function switchTab(tab) { activeTab = tab; shownTracks = 0; shownArtists = 0; renderResults(); }
+
+    function loadMoreTracks() {
+      const rc = document.getElementById('rc');
+      rc.querySelector('.load-more')?.remove();
+      const slice = allTracks.slice(shownTracks, shownTracks + PAGE);
+      const start = shownTracks;
+      shownTracks += slice.length;
+      slice.forEach((t,i) => rc.insertAdjacentHTML('beforeend', trackCard(t, start+i)));
+      if (shownTracks < allTracks.length) rc.insertAdjacentHTML('beforeend', `<button class="load-more" onclick="loadMoreTracks()">⬇️ Ещё треки (${allTracks.length - shownTracks})</button>`);
+    }
+
+    function loadMoreArtists() {
+      const rc = document.getElementById('rc');
+      rc.querySelector('.load-more')?.remove();
+      const slice = allArtists.slice(shownArtists, shownArtists + PAGE);
+      const start = shownArtists;
+      shownArtists += slice.length;
+      slice.forEach((a,i) => rc.insertAdjacentHTML('beforeend', artistCard(a, start+i)));
+    }
+
+    function trackCard(t, idx) {
+      const thumb = t.thumb
+        ? `<img class="track-thumb" src="${esc(t.thumb)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+        : '';
+      const placeholder = `<div class="track-thumb-placeholder" ${t.thumb?'style="display:none"':''}>🎵</div>`;
+      return `<div class="track-card" onclick="selectTrack(${idx})">
+        ${thumb}${placeholder}
+        <div class="track-info">
+          <div class="track-title">${esc(t.title)}</div>
+          <div class="track-artist">${esc(t.artist || '')}</div>
+        </div>
+        <div class="track-dur">${esc(fmtDur(t.duration))}</div>
+      </div>`;
+    }
+
+    function artistCard(a, idx) {
+      return `<div class="artist-card" onclick="openArtist(${idx})">
+        <div class="artist-avatar">${letter(a.name)}</div>
+        <div>
+          <div class="artist-name">${esc(a.name)}</div>
+          <div class="artist-sub">Нажми чтобы посмотреть треки →</div>
+        </div>
+      </div>`;
+    }
+
+    function selectTrack(idx) {
+      const tracks = mode === 'artist' ? artistTracks : allTracks;
+      const t = tracks[idx]; if (!t) return;
+      pendingTrack = t;
+      showDownloadOverlay(t);
+    }
+
+    function showDownloadOverlay(t) {
+      document.getElementById('dlOverlay')?.remove();
+      document.getElementById('dlBg')?.remove();
+
+      const bg = document.createElement('div');
+      bg.className = 'overlay-bg'; bg.id = 'dlBg';
+      bg.onclick = closeOverlay;
+      document.body.appendChild(bg);
+
+      const el = document.createElement('div');
+      el.className = 'dl-overlay'; el.id = 'dlOverlay';
+      el.innerHTML = `
+        <div class="dl-title">Выбери действие</div>
+        <div class="dl-track">${esc(t.title)}${t.artist ? ' — ' + esc(t.artist) : ''}</div>
+        <button class="dl-btn" onclick="downloadTrack()">
+          <span class="dl-btn-icon">⬇️</span>
+          <div><div>Скачать MP3</div><div style="font-size:11px;color:var(--text2);font-weight:400">320kbps · с обложкой</div></div>
+        </button>
+        <button class="dl-cancel" onclick="closeOverlay()">Отмена</button>
+      `;
+      document.body.appendChild(el);
+    }
+
+    function closeOverlay() {
+      document.getElementById('dlOverlay')?.remove();
+      document.getElementById('dlBg')?.remove();
+      pendingTrack = null;
+    }
+
+    async function downloadTrack() {
+      const t = pendingTrack; if (!t) return;
+      closeOverlay();
+      try {
+        await fetch(webhookBase + '/select_music', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({url: t.url, title: t.title, artist: t.artist || '', thumb: t.thumb || '', uid})
+        });
+      } catch(e) {}
+      tg.close();
+    }
+
+    async function openArtist(idx) {
+      const a = allArtists[idx];
+      currentArtist = a;
+      mode = 'artist';
+      app.innerHTML = `<div class="state"><div class="spinner"></div><div class="state-title" style="color:var(--text2)">Загружаю ${esc(a.name)}...</div></div>`;
+
+      try {
+        const r = await fetch(webhookBase + '/music_search', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({query: a.name, uid, artist_only: true})
+        });
+        const d = await r.json();
+        artistTracks = d.tracks || [];
+      } catch(e) {
+        artistTracks = [];
+      }
+      renderArtist(a);
+    }
+
+    function renderArtist(a) {
+      let html = `<div class="artist-header">
+        <button class="artist-header-back" onclick="backToSearch()">← Назад</button>
+        <div class="artist-big-avatar">${letter(a.name)}</div>
+        <div class="artist-big-name">${esc(a.name)}</div>
+        <div class="artist-big-sub">Популярные треки</div>
+      </div><div class="results">`;
+
+      if (!artistTracks.length) {
+        html += `<div class="state"><div class="state-icon">🎵</div><div class="state-title">Треки не найдены</div></div>`;
+      } else {
+        artistTracks.forEach((t,i) => { html += trackCard(t, i); });
+      }
+      html += '</div>';
+      app.innerHTML = html;
+    }
+
+    function backToSearch() { mode = 'search'; renderResults(); }
+  </script>
+</body>
+</html>
