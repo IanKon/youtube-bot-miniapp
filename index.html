@@ -5,64 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Реклама</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="//libtl.com/sdk.js" data-zone="10955979" data-sdk="show_10955979"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       background: #1a1a2e; color: white; height: 100vh;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; padding: 20px;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
     }
     .container { width: 100%; max-width: 400px; text-align: center; }
-    .ad-label { font-size: 11px; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-    .title { font-size: 18px; font-weight: bold; margin-bottom: 8px; color: #e0e0e0; }
-    .subtitle { font-size: 14px; color: #888; margin-bottom: 20px; }
-    .video-wrapper {
-      position: relative; width: 100%; border-radius: 16px;
-      overflow: hidden; background: #000; margin-bottom: 20px; cursor: pointer;
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    .title { font-size: 22px; font-weight: bold; margin-bottom: 10px; color: #e0e0e0; }
+    .subtitle { font-size: 14px; color: #888; margin-bottom: 32px; line-height: 1.5; }
+    .btn {
+      width: 100%; padding: 18px; border: none; border-radius: 14px;
+      font-size: 17px; font-weight: bold; cursor: pointer;
+      font-family: inherit; margin-bottom: 12px; transition: all 0.2s;
     }
-    video { width: 100%; display: block; max-height: 220px; object-fit: cover; pointer-events: none; }
-    .tap-overlay {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.5); z-index: 10; border-radius: 16px;
-    }
-    .tap-text { font-size: 16px; color: white; font-weight: bold; }
-    .timer-bar { width: 100%; height: 4px; background: #333; border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
-    .timer-fill { height: 100%; background: linear-gradient(90deg, #6c63ff, #48cae4); border-radius: 2px; transition: width 1s linear; width: 0%; }
-    .timer-text { font-size: 14px; color: #888; margin-bottom: 20px; }
-    .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
-    .btn-active { background: linear-gradient(135deg, #6c63ff, #48cae4); color: white; }
-    .btn-disabled { background: #2a2a3e; color: #555; cursor: not-allowed; }
-    .skip-blocked { font-size: 12px; color: #555; margin-top: 12px; }
-    .promo { margin-top: 16px; font-size: 14px; color: #aaa; }
-    .status { font-size: 13px; color: #6c63ff; margin-top: 10px; display: none; }
+    .btn-watch { background: linear-gradient(135deg, #6c63ff, #48cae4); color: white; }
+    .btn-watch:disabled { background: #2a2a3e; color: #555; cursor: not-allowed; }
+    .btn-get { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+    .btn-get:disabled { background: #2a2a3e; color: #555; cursor: not-allowed; }
+    .status { font-size: 13px; color: #6c63ff; margin-top: 12px; min-height: 20px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="ad-label">Реклама</div>
-    <div class="title">Смотри рекламу</div>
-    <div class="subtitle">Досмотри до конца чтобы получить видео</div>
+    <div class="icon">🎬</div>
+    <div class="title">Получи видео бесплатно</div>
+    <div class="subtitle">Посмотри короткую рекламу — и видео начнёт загружаться в боте</div>
 
-    <div class="video-wrapper" onclick="handleTap()">
-      <div class="tap-overlay" id="tapOverlay">
-        <div class="tap-text">▶️ Нажми чтобы начать</div>
-      </div>
-      <video id="adVideo" playsinline loop>
-        <source src="ad.mp4" type="video/mp4">
-      </video>
-    </div>
+    <button class="btn btn-watch" id="watchBtn" onclick="watchAd()">▶️ Смотреть рекламу</button>
+    <button class="btn btn-get" id="getBtn" disabled onclick="finish()">🎬 Получить видео</button>
 
-    <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
-    <div class="timer-text" id="timerText">Нажми на видео чтобы начать</div>
-
-    <button class="btn btn-disabled" id="getBtn" disabled onclick="finish()">
-      🎬 Получить видео
-    </button>
-    <div class="skip-blocked" id="skipMsg">Кнопка разблокируется после просмотра</div>
-    <div class="status" id="statusMsg">⏳ Отправляю запрос...</div>
-    <div class="promo">🎁 Промокод: <b style="color: #6c63ff;">MORGENSHTERN</b></div>
+    <div class="status" id="statusMsg"></div>
   </div>
 
   <script>
@@ -70,96 +46,54 @@
     tg.ready();
     tg.expand();
 
-    const TIMER_SEC = 15;
-    let elapsed = 0, timer = null, finished = false, paused = false, started = false;
-
-    const video = document.getElementById('adVideo');
-    const fill = document.getElementById('timerFill');
-    const btn = document.getElementById('getBtn');
-    const skipMsg = document.getElementById('skipMsg');
-    const timerText = document.getElementById('timerText');
-    const tapOverlay = document.getElementById('tapOverlay');
-    const statusMsg = document.getElementById('statusMsg');
-
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token') || '';
     const uid = params.get('uid') || '';
     const webhook = params.get('webhook') || '';
 
-    function handleTap() {
-      if (started) return;
-      started = true;
-      tapOverlay.style.display = 'none';
-      video.muted = false;
-      video.play();
-      startTimer();
-    }
+    const watchBtn = document.getElementById('watchBtn');
+    const getBtn = document.getElementById('getBtn');
+    const statusMsg = document.getElementById('statusMsg');
+    let adWatched = false;
 
-    function startTimer() {
-      if (timer) return;
-      timer = setInterval(() => {
-        if (paused) return;
-        elapsed++;
-        fill.style.width = Math.min(elapsed / TIMER_SEC * 100, 100) + '%';
-        const left = Math.max(TIMER_SEC - elapsed, 0);
-        timerText.innerHTML = `Подожди <b>${left}</b> сек...`;
-        if (elapsed >= TIMER_SEC && !finished) {
-          finished = true;
-          clearInterval(timer);
-          unlock();
-        }
-      }, 1000);
-    }
-
-    function unlock() {
-      btn.disabled = false;
-      btn.className = 'btn btn-active';
-      timerText.textContent = '✅ Готово! Нажми кнопку ниже';
-      skipMsg.textContent = '';
+    function watchAd() {
+      watchBtn.disabled = true;
+      watchBtn.textContent = '⏳ Загружаю рекламу...';
+      show_10955979().then(() => {
+        adWatched = true;
+        watchBtn.textContent = '✅ Реклама просмотрена';
+        getBtn.disabled = false;
+        statusMsg.textContent = '✅ Нажми кнопку ниже чтобы получить видео';
+      }).catch(() => {
+        watchBtn.disabled = false;
+        watchBtn.textContent = '▶️ Смотреть рекламу';
+        statusMsg.textContent = '❌ Досмотри рекламу до конца';
+      });
     }
 
     async function finish() {
-      if (!finished) return;
-      btn.disabled = true;
-      btn.textContent = '⏳ Загружаю...';
-      statusMsg.style.display = 'block';
-
+      if (!adWatched) return;
+      getBtn.disabled = true;
+      getBtn.textContent = '⏳ Загружаю...';
+      statusMsg.textContent = '⏳ Отправляю запрос...';
       try {
         const resp = await fetch(webhook, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: token, user_id: uid })
+          body: JSON.stringify({ token, user_id: uid })
         });
         const data = await resp.json();
         if (data.ok) {
-          statusMsg.textContent = '✅ Готово! Видео начинает загружаться в боте.';
-          timerText.textContent = 'Можешь закрыть это окно.';
-          btn.textContent = '✅ Отправлено!';
+          statusMsg.textContent = '✅ Готово! Видео загружается в боте.';
+          getBtn.textContent = '✅ Отправлено!';
           setTimeout(() => tg.close(), 1500);
-        } else {
-          throw new Error(data.error || 'error');
-        }
+        } else throw new Error();
       } catch(e) {
         statusMsg.textContent = '❌ Ошибка. Попробуй ещё раз.';
-        btn.disabled = false;
-        btn.textContent = '🎬 Получить видео';
+        getBtn.disabled = false;
+        getBtn.textContent = '🎬 Получить видео';
       }
     }
-
-    document.addEventListener('visibilitychange', () => {
-      if (!started) return;
-      if (document.hidden) {
-        paused = true;
-        video.pause();
-        timerText.textContent = '⏸ Вернись чтобы продолжить...';
-      } else {
-        paused = false;
-        video.play();
-        if (!finished) timerText.innerHTML = `Подожди <b>${Math.max(TIMER_SEC - elapsed, 0)}</b> сек...`;
-      }
-    });
-
-    video.addEventListener('pause', () => { if (started && !document.hidden) video.play(); });
   </script>
 </body>
 </html>
