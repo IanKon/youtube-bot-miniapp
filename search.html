@@ -64,18 +64,6 @@
     .sub-btn { background:var(--accent); border:none; border-radius:16px; color:white; font-size:12px; font-weight:700; padding:6px 12px; cursor:pointer; font-family:inherit; white-space:nowrap; }
     .sub-btn.subbed { background:var(--surface2); color:var(--text2); }
 
-    /* ── Модальное окно качества ── */
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:200; display:flex; align-items:flex-end; justify-content:center; animation:fadeIn .2s; }
-    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-    .modal { background:var(--surface); border-radius:20px 20px 0 0; padding:20px 16px 32px; width:100%; max-width:480px; animation:slideUp .25s; }
-    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-    .modal-title { font-size:13px; color:var(--text3); text-align:center; margin-bottom:6px; }
-    .modal-video-title { font-size:15px; font-weight:700; text-align:center; margin-bottom:18px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .quality-btn { display:flex; align-items:center; gap:12px; width:100%; padding:14px 16px; background:var(--surface2); border:none; border-radius:12px; color:var(--text); font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; margin-bottom:10px; transition:background .15s; }
-    .quality-btn:active { background:#333; }
-    .quality-icon { font-size:22px; width:32px; text-align:center; }
-    .quality-desc { font-size:12px; color:var(--text3); font-weight:400; }
-    .modal-cancel { display:block; width:100%; padding:13px; background:none; border:none; color:var(--text3); font-size:15px; font-family:inherit; cursor:pointer; margin-top:4px; }
   </style>
 </head>
 <body>
@@ -103,7 +91,6 @@
     let mode = 'search';
     let currentChannel = null, channelVideos = [];
     let activeTab = 'videos';
-    let pendingVideo = null; // видео ожидающее выбора качества
 
     if (initQuery) { document.getElementById('searchInput').value = initQuery; doSearch(); }
     else showEmpty();
@@ -202,67 +189,17 @@
       </div>`;
     }
 
-    // ── Выбор качества ──────────────────────────────────────────────
-    function selectVideo(idx) {
+    async function selectVideo(idx) {
       const videos = mode==='channel' ? channelVideos : allVideos;
       const v = videos[idx]; if (!v) return;
-      pendingVideo = v;
-      showQualityModal(v.title);
-    }
-
-    function showQualityModal(title) {
-      const existing = document.getElementById('qualityModal');
-      if (existing) existing.remove();
-
-      const modal = document.createElement('div');
-      modal.className = 'modal-overlay';
-      modal.id = 'qualityModal';
-      modal.innerHTML = `
-        <div class="modal" onclick="event.stopPropagation()">
-          <div class="modal-title">Выбери качество</div>
-          <div class="modal-video-title">${esc(title)}</div>
-          <button class="quality-btn" onclick="confirmQuality('1080')">
-            <span class="quality-icon">🔝</span>
-            <div><div>1080p</div><div class="quality-desc">Максимальное качество</div></div>
-          </button>
-          <button class="quality-btn" onclick="confirmQuality('720')">
-            <span class="quality-icon">📺</span>
-            <div><div>720p</div><div class="quality-desc">Хорошее качество</div></div>
-          </button>
-          <button class="quality-btn" onclick="confirmQuality('480')">
-            <span class="quality-icon">📱</span>
-            <div><div>480p</div><div class="quality-desc">Экономия трафика</div></div>
-          </button>
-          <button class="quality-btn" onclick="confirmQuality('mp3')">
-            <span class="quality-icon">🎵</span>
-            <div><div>Только MP3</div><div class="quality-desc">Только звук, без видео</div></div>
-          </button>
-          <button class="modal-cancel" onclick="closeModal()">Отмена</button>
-        </div>
-      `;
-      modal.addEventListener('click', closeModal);
-      document.body.appendChild(modal);
-    }
-
-    function closeModal() {
-      const m = document.getElementById('qualityModal');
-      if (m) m.remove();
-      pendingVideo = null;
-    }
-
-    async function confirmQuality(quality) {
-      const v = pendingVideo;
-      if (!v) return;
-      closeModal();
       try {
         await fetch(webhookBase + '/select_video', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({url: v.url, title: v.title, uid, quality})
+          body: JSON.stringify({url:v.url, title:v.title, uid})
         });
       } catch(e) {}
       tg.close();
     }
-    // ────────────────────────────────────────────────────────────────
 
     async function openChannel(idx) {
       const ch = allChannels[idx];
